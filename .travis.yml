@@ -41,6 +41,6 @@ before_script:
   - chmod +x gradlew
 script:
   - bash .ci/ci_check.sh
-  - bash gradlew codeCoverageReport
+  - bash gradlew jacocoTestReport
 after_success:
   - bash <(curl -s https://codecov.io/bash)
