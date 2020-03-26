@@ -9,19 +9,23 @@ import com.webank.wecross.stub.Request;
 import com.webank.wecross.stub.ResourceInfo;
 import com.webank.wecross.stub.Response;
 import com.webank.wecross.stub.bcos.common.BCOSConstant;
+import com.webank.wecross.stub.bcos.common.BCOSRequestType;
 import com.webank.wecross.stub.bcos.config.BCOSStubConfig;
 import com.webank.wecross.stub.bcos.config.BCOSStubConfigParser;
 import com.webank.wecross.stub.bcos.contract.FunctionUtility;
+import com.webank.wecross.stub.bcos.contract.SignTransaction;
 import com.webank.wecross.stub.bcos.web3j.Web3jWrapper;
 import com.webank.wecross.stub.bcos.web3j.Web3jWrapperImplMock;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import org.fisco.bcos.web3j.abi.FunctionEncoder;
 import org.fisco.bcos.web3j.abi.FunctionReturnDecoder;
 import org.fisco.bcos.web3j.abi.datatypes.Function;
 import org.fisco.bcos.web3j.abi.datatypes.Type;
+import org.fisco.bcos.web3j.crypto.gm.GenCredential;
 import org.fisco.bcos.web3j.protocol.ObjectMapperFactory;
 import org.fisco.bcos.web3j.protocol.core.methods.response.BcosBlock;
 import org.fisco.bcos.web3j.protocol.core.methods.response.Call;
@@ -68,7 +72,7 @@ public class BCOSConnectionTest {
     }
 
     @Test
-    public void handleUnkownTypeTest() throws IOException {
+    public void handleUnknownTypeTest() throws IOException {
         Web3jWrapper web3jWrapper = new Web3jWrapperImplMock();
         BCOSConnection connection = new BCOSConnection(web3jWrapper);
         Request request = new Request();
@@ -82,7 +86,7 @@ public class BCOSConnectionTest {
         Web3jWrapper web3jWrapper = new Web3jWrapperImplMock();
         BCOSConnection connection = new BCOSConnection(web3jWrapper);
         Request request = new Request();
-        request.setType(BCOSConstant.BCOS_GET_BLOCK_NUMBER);
+        request.setType(BCOSRequestType.GET_BLOCK_NUMBER);
         Response response = connection.send(request);
         BigInteger blockNumber = new BigInteger(response.getData());
         assertEquals(response.getErrorCode(), 0);
@@ -96,7 +100,7 @@ public class BCOSConnectionTest {
         Web3jWrapper web3jWrapper = new Web3jWrapperImplMock();
         BCOSConnection connection = new BCOSConnection(web3jWrapper);
         Request request = new Request();
-        request.setType(BCOSConstant.BCOS_GET_BLOCK_HEADER);
+        request.setType(BCOSRequestType.GET_BLOCK_HEADER);
 
         request.setData(BigInteger.valueOf(11111).toByteArray());
         Response response = connection.send(request);
@@ -128,7 +132,7 @@ public class BCOSConnectionTest {
         Web3jWrapper web3jWrapper = new Web3jWrapperImplMock();
         BCOSConnection connection = new BCOSConnection(web3jWrapper);
         Request request = new Request();
-        request.setType(BCOSConstant.BCOS_CALL);
+        request.setType(BCOSRequestType.CALL);
 
         String address = "0x6db416c8ac6b1fe7ed08771de419b71c084ee5969029346806324601f2e3f0d0";
         String funName = "funcName";
@@ -156,5 +160,38 @@ public class BCOSConnectionTest {
         for (int i = 0; i < params.size(); i++) {
             assertEquals(stringList.get(i), params.get(i));
         }
+    }
+
+    @Test
+    public void handleSendTransactionTest() throws IOException {
+        BCOSDriver driver = new BCOSDriver();
+
+        Web3jWrapper web3jWrapper = new Web3jWrapperImplMock();
+        BCOSConnection connection = new BCOSConnection(web3jWrapper);
+        Request request = new Request();
+        request.setType(BCOSRequestType.SEND_TRANSACTION);
+
+        String address = "0x6db416c8ac6b1fe7ed08771de419b71c084ee5969029346806324601f2e3f0d0";
+        String funName = "funcName";
+        List<String> params = Arrays.asList("abc", "def", "hig");
+
+        Function function = FunctionUtility.newFunction(funName, params);
+
+        String abi = FunctionEncoder.encode(function);
+
+        String sign =
+                SignTransaction.sign(
+                        GenCredential.create(),
+                        address,
+                        BigInteger.valueOf(1),
+                        BigInteger.valueOf(1),
+                        BigInteger.valueOf(1),
+                        abi);
+
+        request.setData(sign.getBytes(StandardCharsets.UTF_8));
+
+        Response response = connection.send(request);
+
+        assertEquals(response.getErrorCode(), 0);
     }
 }
