@@ -21,7 +21,7 @@ public class BCOSStubFactory implements StubFactory {
     @Override
     public Connection newConnection(String path) {
         try {
-            return BCOSConnectionFactory.build(path);
+            return BCOSConnectionFactory.build(path, null);
         } catch (Exception e) {
             logger.error(" newConnection, e: ", e);
             return null;
