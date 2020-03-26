@@ -8,11 +8,14 @@ import com.webank.wecross.stub.Request;
 import com.webank.wecross.stub.ResourceInfo;
 import com.webank.wecross.stub.Response;
 import com.webank.wecross.stub.bcos.common.BCOSConstant;
+import com.webank.wecross.stub.bcos.common.BCOSRequestType;
 import com.webank.wecross.stub.bcos.config.BCOSStubConfig;
 import com.webank.wecross.stub.bcos.web3j.Web3jWrapper;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import org.fisco.bcos.web3j.protocol.ObjectMapperFactory;
 import org.fisco.bcos.web3j.protocol.core.methods.response.BcosBlock;
 import org.fisco.bcos.web3j.protocol.core.methods.response.Call;
@@ -64,8 +67,7 @@ public class BCOSConnection implements Connection {
             BCOSStubConfig.Resource resource = resourceList.get(i);
 
             resourceInfo.setName(resource.getName());
-            resourceInfo.setStubType("BCOS2.0");
-            // resourceInfo.setType(resource.getType());
+            resourceInfo.setStubType(BCOSConstant.BCOS_ACCOUNT);
             resourceInfo.setChecksum(sha3Digest.hash(resource.getValue()));
 
             resourceInfo.getProperties().put(resource.getName(), resource.getValue());
@@ -91,14 +93,16 @@ public class BCOSConnection implements Connection {
     @Override
     public Response send(Request request) {
         switch (request.getType()) {
-            case BCOSConstant.BCOS_CALL:
+            case BCOSRequestType.CALL:
                 return handleCallRequest(request);
-            case BCOSConstant.BCOS_SEND_TRANSACTION:
+            case BCOSRequestType.SEND_TRANSACTION:
                 return handleTransactionRequest(request);
-            case BCOSConstant.BCOS_GET_BLOCK_HEADER:
+            case BCOSRequestType.GET_BLOCK_HEADER:
                 return handleGetBlockHeaderRequest(request);
-            case BCOSConstant.BCOS_GET_BLOCK_NUMBER:
+            case BCOSRequestType.GET_BLOCK_NUMBER:
                 return handleGetBlockNumberRequest(request);
+            case BCOSRequestType.GET_TRANSACTION_RECEIPT:
+                return handleGetTransactionReceipt(request);
             default:
                 logger.warn("unrecognized request type, type: {}", request.getType());
                 Response response = new Response();
@@ -111,7 +115,7 @@ public class BCOSConnection implements Connection {
     public Response handleCallRequest(Request request) {
         Response response = new Response();
         try {
-            String params = new String(request.getData(), "UTF-8");
+            String params = new String(request.getData(), StandardCharsets.UTF_8);
             String[] split = params.split(",");
 
             logger.debug(" contractAddress: {}, ABI: {}", split[0], split[1]);
@@ -134,7 +138,7 @@ public class BCOSConnection implements Connection {
     public Response handleTransactionRequest(Request request) {
         Response response = new Response();
         try {
-            String signTx = new String(request.getData(), "UTF-8");
+            String signTx = new String(request.getData(), StandardCharsets.UTF_8);
 
             logger.trace(" signTx: {}", signTx);
 
@@ -169,6 +173,34 @@ public class BCOSConnection implements Connection {
             response.setErrorCode(-1);
             response.setErrorMessage(" errorMessage: " + e.getMessage());
         }
+        return response;
+    }
+
+    public Response handleGetTransactionReceipt(Request request) {
+        Response response = new Response();
+        try {
+            String txHash = new String(request.getData(), StandardCharsets.UTF_8);
+
+            logger.trace(" tx hash : {}", txHash);
+
+            TransactionReceipt receipt = web3jWrapper.getTransactionReceipt(txHash);
+
+            if (Objects.isNull(receipt.getTransactionHash())) {
+                throw new RuntimeException(" TransactionReceipt not exist, tx hash: " + txHash);
+            }
+
+            response.setErrorCode(0);
+            response.setErrorMessage("success");
+            objectMapper.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
+            response.setData(objectMapper.writeValueAsBytes(receipt));
+            logger.debug(" getTransactionReceipt, result: {}", receipt);
+
+        } catch (Exception e) {
+            logger.warn(" Exception, e: {}", e);
+            response.setErrorCode(-1);
+            response.setErrorMessage(" errorMessage: " + e.getMessage());
+        }
+
         return response;
     }
 

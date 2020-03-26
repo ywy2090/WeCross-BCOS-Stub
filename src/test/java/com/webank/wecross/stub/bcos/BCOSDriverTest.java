@@ -15,7 +15,7 @@ import com.webank.wecross.stub.TransactionContext;
 import com.webank.wecross.stub.TransactionRequest;
 import com.webank.wecross.stub.TransactionResponse;
 import com.webank.wecross.stub.bcos.account.BCOSAccountFactory;
-import com.webank.wecross.stub.bcos.common.BCOSConstant;
+import com.webank.wecross.stub.bcos.common.BCOSRequestType;
 import com.webank.wecross.stub.bcos.web3j.Web3jWrapperFaildMock;
 import com.webank.wecross.stub.bcos.web3j.Web3jWrapperImplMock;
 import java.io.IOException;
@@ -35,13 +35,13 @@ public class BCOSDriverTest {
     private ResourceInfo resourceInfo = null;
     private BlockHeaderManager blockHeaderManager = null;
 
-    public TransactionContext<TransactionRequest> creteTranscactionRequestContext(
+    public TransactionContext<TransactionRequest> createTranscactionRequestContext(
             String method, List<String> args) {
         TransactionRequest transactionRequest =
                 new TransactionRequest(method, args.toArray(new String[0]));
         TransactionContext<TransactionRequest> requestTransactionContext =
                 new TransactionContext<TransactionRequest>(
-                        transactionRequest, account, resourceInfo);
+                        transactionRequest, account, resourceInfo, blockHeaderManager);
         requestTransactionContext.setAccount(account);
         requestTransactionContext.setBlockHeaderManager(blockHeaderManager);
         requestTransactionContext.setData(transactionRequest);
@@ -75,14 +75,17 @@ public class BCOSDriverTest {
         Request request = new Request();
         request.setData(new byte[0]);
 
-        request.setType(BCOSConstant.BCOS_CALL);
+        request.setType(BCOSRequestType.CALL);
         assertTrue(driver.isTransaction(request));
-        request.setType(BCOSConstant.BCOS_SEND_TRANSACTION);
+        request.setType(BCOSRequestType.SEND_TRANSACTION);
         assertTrue(driver.isTransaction(request));
 
-        request.setType(BCOSConstant.BCOS_GET_BLOCK_NUMBER);
+        request.setType(BCOSRequestType.GET_BLOCK_NUMBER);
         assertFalse(driver.isTransaction(request));
-        request.setType(BCOSConstant.BCOS_GET_BLOCK_HEADER);
+        request.setType(BCOSRequestType.GET_BLOCK_HEADER);
+        assertFalse(driver.isTransaction(request));
+
+        request.setType(BCOSRequestType.GET_TRANSACTION_RECEIPT);
         assertFalse(driver.isTransaction(request));
 
         request.setType(11111);
@@ -97,7 +100,7 @@ public class BCOSDriverTest {
     @Test
     public void getBlockNumberTest() {
         Request request = new Request();
-        request.setType(BCOSConstant.BCOS_GET_BLOCK_NUMBER);
+        request.setType(BCOSRequestType.GET_BLOCK_NUMBER);
 
         long blockNumber = driver.getBlockNumber(connection);
 
@@ -107,7 +110,7 @@ public class BCOSDriverTest {
     @Test
     public void getBlockNumberFailedTest() {
         Request request = new Request();
-        request.setType(BCOSConstant.BCOS_GET_BLOCK_NUMBER);
+        request.setType(BCOSRequestType.GET_BLOCK_NUMBER);
 
         long blockNumber = driver.getBlockNumber(failedConnection);
 
@@ -118,7 +121,7 @@ public class BCOSDriverTest {
     public void getBlockHeaderTest() throws IOException {
 
         Request request = new Request();
-        request.setType(BCOSConstant.BCOS_GET_BLOCK_HEADER);
+        request.setType(BCOSRequestType.GET_BLOCK_HEADER);
         request.setData(BigInteger.valueOf(11111).toByteArray());
 
         byte[] blockHeader1 = driver.getBlockHeader(1111, connection);
@@ -147,7 +150,7 @@ public class BCOSDriverTest {
     public void getBlockHeaderFailedTest() {
 
         Request request = new Request();
-        request.setType(BCOSConstant.BCOS_GET_BLOCK_HEADER);
+        request.setType(BCOSRequestType.GET_BLOCK_HEADER);
         request.setData(BigInteger.valueOf(11111).toByteArray());
 
         byte[] blockHeader1 = driver.getBlockHeader(1111, failedConnection);
@@ -158,14 +161,14 @@ public class BCOSDriverTest {
     public void callTest() throws IOException {
 
         Request request = new Request();
-        request.setType(BCOSConstant.BCOS_CALL);
+        request.setType(BCOSRequestType.CALL);
 
         String address = "0x6db416c8ac6b1fe7ed08771de419b71c084ee5969029346806324601f2e3f0d0";
         String funName = "funcName";
         List<String> params = Arrays.asList("abc", "def", "hig", "xxxxx");
 
         TransactionContext<TransactionRequest> requestTransactionContext =
-                creteTranscactionRequestContext(funName, params);
+                createTranscactionRequestContext(funName, params);
         TransactionResponse transactionResponse =
                 driver.call(requestTransactionContext, connection);
 
@@ -181,14 +184,14 @@ public class BCOSDriverTest {
     public void callFailedTest() throws IOException {
 
         Request request = new Request();
-        request.setType(BCOSConstant.BCOS_CALL);
+        request.setType(BCOSRequestType.CALL);
 
         String address = "0x6db416c8ac6b1fe7ed08771de419b71c084ee5969029346806324601f2e3f0d0";
         String funName = "funcName";
         List<String> params = Arrays.asList("abc", "def", "hig", "xxxxx");
 
         TransactionContext<TransactionRequest> requestTransactionContext =
-                creteTranscactionRequestContext(funName, params);
+                createTranscactionRequestContext(funName, params);
         TransactionResponse transactionResponse =
                 driver.call(requestTransactionContext, failedConnection);
 
@@ -199,14 +202,14 @@ public class BCOSDriverTest {
     public void sendTransactionTest() throws IOException {
 
         Request request = new Request();
-        request.setType(BCOSConstant.BCOS_SEND_TRANSACTION);
+        request.setType(BCOSRequestType.SEND_TRANSACTION);
 
         String address = "0x6db416c8ac6b1fe7ed08771de419b71c084ee5969029346806324601f2e3f0d0";
         String funName = "funcName";
         List<String> params = Arrays.asList("abc", "def", "hig", "xxxxx");
 
         TransactionContext<TransactionRequest> requestTransactionContext =
-                creteTranscactionRequestContext(funName, params);
+                createTranscactionRequestContext(funName, params);
         TransactionResponse transactionResponse =
                 driver.sendTransaction(requestTransactionContext, connection);
 
@@ -222,16 +225,16 @@ public class BCOSDriverTest {
     public void sendTransactionFailedTest() throws IOException {
 
         Request request = new Request();
-        request.setType(BCOSConstant.BCOS_SEND_TRANSACTION);
+        request.setType(BCOSRequestType.SEND_TRANSACTION);
 
         String address = "0x6db416c8ac6b1fe7ed08771de419b71c084ee5969029346806324601f2e3f0d0";
         String funName = "funcName";
         List<String> params = Arrays.asList("abc", "def", "hig", "xxxxx");
 
         TransactionContext<TransactionRequest> requestTransactionContext =
-                creteTranscactionRequestContext(funName, params);
+                createTranscactionRequestContext(funName, params);
         TransactionResponse transactionResponse =
-                driver.call(requestTransactionContext, failedConnection);
+                driver.sendTransaction(requestTransactionContext, failedConnection);
 
         assertTrue(transactionResponse.getErrorCode() < 0);
     }

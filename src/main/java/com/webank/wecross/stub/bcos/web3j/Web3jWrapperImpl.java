@@ -17,6 +17,7 @@ import org.fisco.bcos.web3j.protocol.core.DefaultBlockParameter;
 import org.fisco.bcos.web3j.protocol.core.DefaultBlockParameterName;
 import org.fisco.bcos.web3j.protocol.core.methods.request.Transaction;
 import org.fisco.bcos.web3j.protocol.core.methods.response.BcosBlock;
+import org.fisco.bcos.web3j.protocol.core.methods.response.BcosTransactionReceipt;
 import org.fisco.bcos.web3j.protocol.core.methods.response.BlockNumber;
 import org.fisco.bcos.web3j.protocol.core.methods.response.Call;
 import org.fisco.bcos.web3j.protocol.core.methods.response.TransactionReceipt;
@@ -36,6 +37,11 @@ public class Web3jWrapperImpl implements Web3jWrapper {
 
     public Web3jWrapperImpl(BCOSStubConfig.ChannelService channelServiceConfig) throws Exception {
         this.initialize(channelServiceConfig);
+    }
+
+    public Web3jWrapperImpl(Web3j web3j, Service service) {
+        this.web3j = web3j;
+        this.service = service;
     }
 
     public Web3j getWeb3j() {
@@ -74,12 +80,6 @@ public class Web3jWrapperImpl implements Web3jWrapper {
                                 : EncryptType.ECDSA_TYPE);
         logger.trace(" EncryptType: {}", encryptType.getEncryptType());
 
-        Service service = new Service();
-
-        /** Initialize the Web3J service */
-        service.setConnectSeconds(BCOSConstant.WE3J_START_TIMEOUT_DEFAULT);
-        service.setGroupId(channelServiceConfig.getChain().getGroupID());
-
         List<ChannelConnections> allChannelConnections = new ArrayList<>();
         ChannelConnections channelConnections = new ChannelConnections();
         channelConnections.setGroupId(channelServiceConfig.getChain().getGroupID());
@@ -97,6 +97,12 @@ public class Web3jWrapperImpl implements Web3jWrapper {
         groupChannelConnectionsConfig.setSslKey(
                 resolver.getResource(channelServiceConfig.getSslKey()));
         groupChannelConnectionsConfig.setAllChannelConnections(allChannelConnections);
+
+        Service service = new Service();
+
+        /** Initialize the Web3J service */
+        service.setConnectSeconds(BCOSConstant.WE3J_START_TIMEOUT_DEFAULT);
+        service.setGroupId(channelServiceConfig.getChain().getGroupID());
 
         service.setAllChannelConnections(groupChannelConnectionsConfig);
 
@@ -136,6 +142,12 @@ public class Web3jWrapperImpl implements Web3jWrapper {
     @Override
     public TransactionReceipt sendTransaction(String signTx) throws IOException {
         return executeTransaction.sendTransaction(signTx);
+    }
+
+    @Override
+    public TransactionReceipt getTransactionReceipt(String hash) throws IOException {
+        BcosTransactionReceipt bcosTransactionReceipt = web3j.getTransactionReceipt(hash).send();
+        return bcosTransactionReceipt.getResult();
     }
 
     @Override

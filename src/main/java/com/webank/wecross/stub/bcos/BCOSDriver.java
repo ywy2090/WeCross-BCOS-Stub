@@ -3,6 +3,7 @@ package com.webank.wecross.stub.bcos;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.webank.wecross.stub.BlockHeader;
+import com.webank.wecross.stub.BlockHeaderManager;
 import com.webank.wecross.stub.Connection;
 import com.webank.wecross.stub.Driver;
 import com.webank.wecross.stub.Request;
@@ -11,12 +12,15 @@ import com.webank.wecross.stub.Response;
 import com.webank.wecross.stub.TransactionContext;
 import com.webank.wecross.stub.TransactionRequest;
 import com.webank.wecross.stub.TransactionResponse;
+import com.webank.wecross.stub.VerifiedTransaction;
 import com.webank.wecross.stub.bcos.account.BCOSAccount;
 import com.webank.wecross.stub.bcos.common.BCOSConstant;
+import com.webank.wecross.stub.bcos.common.BCOSRequestType;
 import com.webank.wecross.stub.bcos.contract.FunctionUtility;
 import com.webank.wecross.stub.bcos.contract.SignTransaction;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.security.InvalidParameterException;
 import java.util.Arrays;
 import java.util.List;
@@ -47,15 +51,14 @@ public class BCOSDriver implements Driver {
 
     @Override
     public boolean isTransaction(Request request) {
-        return (request.getType() == BCOSConstant.BCOS_SEND_TRANSACTION)
-                || (request.getType() == BCOSConstant.BCOS_CALL);
+        return (request.getType() == BCOSRequestType.SEND_TRANSACTION)
+                || (request.getType() == BCOSRequestType.CALL);
     }
 
     @Override
     public BlockHeader decodeBlockHeader(byte[] data) {
         try {
-            BlockHeader blockHeader = objectMapper.readValue(data, BlockHeader.class);
-            return blockHeader;
+            return objectMapper.readValue(data, BlockHeader.class);
         } catch (IOException e) {
             logger.warn(" IOException: {}", e);
             return null;
@@ -103,8 +106,8 @@ public class BCOSDriver implements Driver {
                     data);
 
             Request req = new Request();
-            req.setType(BCOSConstant.BCOS_CALL);
-            req.setData((contractAddress + "," + data).getBytes("UTF-8"));
+            req.setType(BCOSRequestType.CALL);
+            req.setData((contractAddress + "," + data).getBytes(StandardCharsets.UTF_8));
             Response resp = connection.send(req);
             if (resp.getErrorCode() != 0) {
                 throw new RuntimeException(resp.getErrorMessage());
@@ -203,8 +206,8 @@ public class BCOSDriver implements Driver {
                             data);
 
             Request req = new Request();
-            req.setType(BCOSConstant.BCOS_SEND_TRANSACTION);
-            req.setData(signTx.getBytes("UTF-8"));
+            req.setType(BCOSRequestType.SEND_TRANSACTION);
+            req.setData(signTx.getBytes(StandardCharsets.UTF_8));
             Response resp = connection.send(req);
             if (resp.getErrorCode() != 0) {
                 throw new RuntimeException(resp.getErrorMessage());
@@ -239,7 +242,7 @@ public class BCOSDriver implements Driver {
     @Override
     public long getBlockNumber(Connection connection) {
         Request request = new Request();
-        request.setType(BCOSConstant.BCOS_GET_BLOCK_NUMBER);
+        request.setType(BCOSRequestType.GET_BLOCK_NUMBER);
         Response response = connection.send(request);
 
         // Returns an invalid value to indicate that the function performed incorrectly
@@ -260,7 +263,7 @@ public class BCOSDriver implements Driver {
     public byte[] getBlockHeader(long number, Connection connection) {
 
         Request request = new Request();
-        request.setType(BCOSConstant.BCOS_GET_BLOCK_HEADER);
+        request.setType(BCOSRequestType.GET_BLOCK_HEADER);
         request.setData(BigInteger.valueOf(number).toByteArray());
         Response response = connection.send(request);
         if (response.getErrorCode() != 0) {
@@ -272,6 +275,41 @@ public class BCOSDriver implements Driver {
         }
 
         return response.getData();
+    }
+
+    public TransactionReceipt requestTransactionReceipt(
+            String transactionHash, Connection connection) throws IOException {
+        Request request = new Request();
+        request.setType(BCOSRequestType.GET_TRANSACTION_RECEIPT);
+        request.setData(transactionHash.getBytes(StandardCharsets.UTF_8));
+        Response response = connection.send(request);
+        if (response.getErrorCode() != 0) {
+            logger.warn(
+                    " errorCode: {},  errorMessage: {}",
+                    response.getErrorCode(),
+                    response.getErrorMessage());
+            return null;
+        }
+
+        Response resp = connection.send(request);
+        if (resp.getErrorCode() != 0) {
+            throw new RuntimeException(resp.getErrorMessage());
+        }
+
+        objectMapper.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
+        TransactionReceipt receipt =
+                objectMapper.readValue(resp.getData(), TransactionReceipt.class);
+
+        logger.trace(" hash: {}, receipt: {}", transactionHash, receipt);
+        return receipt;
+    }
+
+    @Override
+    public VerifiedTransaction getVerifiedTransaction(
+            String transactionHash, BlockHeaderManager blockHeaderManager, Connection connection) {
+
+        logger.trace(" tx hash: {}", transactionHash);
+        return null;
     }
 
     private void checkRequest(TransactionContext<TransactionRequest> request) {
