@@ -11,6 +11,7 @@ import org.fisco.bcos.web3j.abi.FunctionEncoder;
 import org.fisco.bcos.web3j.abi.FunctionReturnDecoder;
 import org.fisco.bcos.web3j.abi.datatypes.Function;
 import org.fisco.bcos.web3j.abi.datatypes.Type;
+import org.fisco.bcos.web3j.protocol.core.methods.response.TransactionReceipt;
 import org.junit.Test;
 
 public class FunctionUtilityTest {
@@ -55,4 +56,73 @@ public class FunctionUtilityTest {
         List<String> resultList = FunctionUtility.convertToStringList(typeList);
         assertTrue(resultList.isEmpty());
     }
+
+    @Test
+    public void decodeOutputTest() throws IOException {
+        String[] output = FunctionUtility.decodeOutput("0x");
+        assertTrue(output.length == 0);
+
+        String[] output0 = FunctionUtility.decodeOutput("");
+        assertTrue(output0.length == 0);
+
+        String funcName = "funcName";
+        List<String> params0 = Arrays.asList();
+        Function function0 = FunctionUtility.newFunction("funcName", Arrays.asList());
+        String abi0 = FunctionEncoder.encode(function0);
+
+        String[] output1 = FunctionUtility.decodeOutput(abi0.substring(10));
+        assertTrue(output1.length == params0.size());
+        for (int i = 0; i < output1.length; ++i) {
+            assertEquals(output1[i], params0.get(i));
+        }
+
+        List<String> params1 = Arrays.asList("aa", "bb", "cc");
+        Function function1 = FunctionUtility.newFunction(funcName, params1);
+        String abi1 = FunctionEncoder.encode(function1);
+
+        String[] output2 = FunctionUtility.decodeOutput(abi1.substring(10));
+        assertTrue(output2.length == params1.size());
+        for (int i = 0; i < output2.length; ++i) {
+            assertEquals(output2[i], params1.get(i));
+        }
+    }
+
+    @Test
+    public void decodeInputTest() throws IOException {
+        String[] input = FunctionUtility.decodeInput("0x");
+        assertTrue(input.length == 0);
+
+        String[] input0 = FunctionUtility.decodeInput("");
+        assertTrue(input0.length == 0);
+
+        String funcName = "funcName";
+        List<String> params0 = Arrays.asList();
+        Function function0 = FunctionUtility.newFunction(funcName, params0);
+        String abi0 = FunctionEncoder.encode(function0);
+
+        String[] input1 = FunctionUtility.decodeInput(abi0);
+        assertTrue(input1.length == params0.size());
+        for (int i = 0; i < input1.length; ++i) {
+            assertEquals(input1[i], params0.get(i));
+        }
+
+        List<String> params1 = Arrays.asList("aa", "bb", "cc");
+        Function function1 = FunctionUtility.newFunction(funcName, params1);
+        String abi1 = FunctionEncoder.encode(function1);
+
+        String[] input2 = FunctionUtility.decodeInput(abi1);
+        assertTrue(input2.length == params1.size());
+        for (int i = 0; i < input2.length; ++i) {
+            assertEquals(input2[i], params1.get(i));
+        }
+    }
+
+    @Test
+    public void decodeTransactionReceiptInputTest() throws IOException {
+        TransactionReceipt receipt = new TransactionReceipt();
+        receipt.setStatus("0x1");
+    }
+
+    @Test
+    public void decodeTransactionReceiptOutputTest() throws IOException {}
 }
