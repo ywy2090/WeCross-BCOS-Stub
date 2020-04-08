@@ -106,7 +106,7 @@ public class BCOSConnection implements Connection {
             response.setErrorMessage(BCOSStatusCode.getStatusMessage(BCOSStatusCode.Success));
             response.setData(objectMapper.writeValueAsBytes(callOutput));
         } catch (Exception e) {
-            logger.warn(" Exception, e: {}", e);
+            logger.warn(" handleCallRequest Exception, e: {}", e);
             response.setErrorCode(BCOSStatusCode.HandleCallRequestFailed);
             response.setErrorMessage(" errorMessage: " + e.getMessage());
         }
@@ -140,7 +140,8 @@ public class BCOSConnection implements Connection {
             response.setErrorCode(e.getErrorCode());
             response.setErrorMessage(e.getMessage());
         } catch (Exception e) {
-            logger.warn(" Exception, request type: {}, e: {}", request.getType(), e);
+            logger.warn(
+                    " handleCallRequest Exception, request type: {}, e: {}", request.getType(), e);
             response.setErrorCode(BCOSStatusCode.HandleSendTransactionFailed);
             response.setErrorMessage(" errorMessage: " + e.getMessage());
         }
@@ -158,7 +159,7 @@ public class BCOSConnection implements Connection {
             response.setData(blockNumber.toByteArray());
             logger.debug(" blockNumber: {}", blockNumber);
         } catch (Exception e) {
-            logger.warn(" Exception, e: {}", e);
+            logger.warn(" handleGetBlockNumberRequest Exception, e: {}", e);
             response.setErrorCode(BCOSStatusCode.HandleGetBlockNumberFailed);
             response.setErrorMessage(" errorMessage: " + e.getMessage());
         }
@@ -196,8 +197,7 @@ public class BCOSConnection implements Connection {
                     " Not found transaction receipt proof, tx hash: " + txHash);
         }
 
-        TransactionProof transactionProof = new TransactionProof(transAndProof, receiptAndProof);
-        return transactionProof;
+        return new TransactionProof(transAndProof, receiptAndProof);
     }
 
     public Response handleGetTransactionProof(Request request) {
@@ -220,7 +220,7 @@ public class BCOSConnection implements Connection {
             response.setErrorCode(e.getErrorCode());
             response.setErrorMessage(e.getMessage());
         } catch (Exception e) {
-            logger.warn(" Exception, e: {}", e);
+            logger.warn(" handleGetTransactionProof Exception, e: {}", e);
             response.setErrorCode(BCOSStatusCode.HandleGetTransactionProofFailed);
             response.setErrorMessage(" errorMessage: " + e.getMessage());
         }
